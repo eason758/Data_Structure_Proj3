@@ -1,0 +1,359 @@
+#include <iostream>
+#include <stdlib.h>
+#include <time.h>
+#include "../include/algorithm.h"
+
+#define MAX_VAL 100000
+
+bool first_turn = true;
+
+using namespace std;
+
+
+void choose_cell(Board board, int& row, int& col, Player *player);
+
+int evaluate(Board board, char pre_color, char next_color);
+
+
+bool in_board(int i, int j);
+bool win(Board board, char pre_color, char next_color);
+
+
+
+//������Ĥ@�B�|�U�b0,0?
+//�]���bevaluate 0,0 ���ɭ� �o�{Ĺ�F(�Ĥ@�B�u���ۤv)
+
+//������|�@���U�s�O?
+//�]��evaluation�� �h�@��cell = �h�@�� value�ӷ�
+
+
+
+
+
+
+
+
+
+
+/******************************************************
+ * In your algorithm, you can just use the the funcitons
+ * listed by TA to get the board information.(functions
+ * 1. ~ 4. are listed in next block)
+ *
+ * The STL library functions is not allowed to use.
+******************************************************/
+
+/*************************************************************************
+ * 1. int board.get_orbs_num(int row_index, int col_index)
+ * 2. int board.get_capacity(int row_index, int col_index)
+ * 3. char board.get_cell_color(int row_index, int col_index)
+ * 4. void board.print_current_board(int row_index, int col_index, int round)
+ *
+ * 1. The function that return the number of orbs in cell(row, col)
+ * 2. The function that return the orb capacity of the cell(row, col)
+ * 3. The function that return the color fo the cell(row, col)
+ * 4. The function that print out the current board statement
+*************************************************************************/
+
+
+void algorithm_A(Board board, Player player, int index[]) {
+
+	//////your algorithm design///////////
+
+
+	// �D�n�O�^��(�����|�^�� �O���)  :  index[0] = row , index[1] = col �g�U�ۤv���̲רM�w
+	// board �� player �u�O�A�d�\����H ������
+
+	int row, col;
+	char color = player.get_color();
+	
+	char ene_color;
+	if (color == 'r') ene_color = 'b';
+	else ene_color = 'r';
+
+	Player * tmp_player = new Player(player.get_color());
+
+	choose_cell(board, row, col, tmp_player);
+	
+
+	index[0] = row, index[1] = col;
+}
+
+
+void choose_cell(Board board, int& row, int& col, Player *player) {
+
+	Board tmp_board = board;
+	char color = player->get_color();
+
+	char ene_color;
+	if (color == 'r') ene_color = 'b';
+	else ene_color = 'r';
+
+	int total_val[5][6];
+	int max_val = -MAX_VAL;
+	int max_val_row;
+	int max_val_col;
+
+	if (first_turn) {
+		row = 2;
+		col = 2;
+		first_turn = false;
+		return;
+	}
+
+	for (int i = 0; i < ROW; i++) {
+		for (int j = 0; j < COL; j++) {
+
+			if (board.get_cell_color(i, j) == color || board.get_cell_color(i, j) == 'w') {
+
+				tmp_board.place_orb(i, j, player);
+
+				total_val[i][j] = evaluate(tmp_board, color, ene_color);
+
+
+				// �p�G�U�F�M��Ĺ�F
+				if (total_val[i][j] == MAX_VAL){
+					row = i;
+					col = j;
+					return;
+				}   
+				
+				//cout << total_val[i][j] << endl;
+				
+				if (total_val[i][j] > max_val) {
+
+					max_val = total_val[i][j];
+					max_val_row = i;
+					max_val_col = j;
+
+				}
+
+				tmp_board = board;
+			}
+			else continue;
+
+		}
+	}
+
+	row = max_val_row;
+	col = max_val_col;
+
+}
+
+
+
+// �n�ѨM: �p�G�U���s�@�I ���ƴN�|����h �����D
+
+// pre_color�N�����e�U���O�� ; now_color�N���U�ӤU���O��
+// evaluate �P�_���O pre_color �U���� , next_color �U���e �� value
+// �i�Ǧ��P�_ pre_color �U���o�B�ҳy����   """ �����ӻ�����Lvalue """  �n���n
+int evaluate(Board board, char pre_color, char next_color) {
+
+	// Ĺ�F�N�U
+	if (win(board, pre_color, next_color)) return MAX_VAL;
+
+	int cell_val[ROW][COL];
+	int total_val = 0;
+
+
+	for (int i = 0; i < ROW; i++) {
+		for (int j = 0; j < COL; j++) {
+			cell_val[i][j] = 0;
+			int cur_orb_num = board.get_orbs_num(i, j);
+			int cur_cap = board.get_capacity(i, j);
+
+			if (board.get_cell_color(i,j) == 'w') continue;		//�p�G�ťմN = 0
+			
+			//�ۤv��cell
+			if (board.get_cell_color(i, j) == pre_color) {
+				//************************basic value***************************
+
+				//�z���d��
+				cell_val[i][j] += cur_cap;
+				cell_val[i][j] += cur_orb_num;
+
+				//�ٮt�h��orb�i�z��
+				cell_val[i][j] += 10 * cur_orb_num/cur_cap;
+
+				//************************bomb value***************************
+
+				//�j�� or �p�� �j����orb�ƶq (�i�|�[)
+				//�W ���W �� ���U �U �k�U �k �k�W
+
+				//�p�G�p��j���� ��val�N - �ۤv��orb_num(�]���|�Q�Y��)
+				//�V�h��ۤv�j���j��cell �N - �V�h(���V�hcell �N��V��)
+
+				//�p�G���j���h �N +=��誺orb_num
+
+				if (in_board(i - 1, j)) {
+					if (board.get_cell_color(i - 1, j) == next_color) {
+						if (board.get_orbs_num(i - 1, j) >= cur_orb_num) {
+							cell_val[i][j] -= cur_orb_num;
+							cell_val[i][j] -= cur_cap;
+						}
+						else {
+							cell_val[i][j] += board.get_orbs_num(i - 1, j);
+							cell_val[i][j] += board.get_capacity(i - 1, j);
+						}
+
+					}
+				}
+
+				if (in_board(i - 1, j - 1)) {
+					if (board.get_cell_color(i - 1, j - 1) == next_color) {
+						if (board.get_orbs_num(i - 1, j - 1) >= cur_orb_num) {
+							cell_val[i][j] -= cur_orb_num;
+							cell_val[i][j] -= cur_cap;
+						}
+						else {
+							cell_val[i][j] += board.get_orbs_num(i - 1, j - 1);
+							cell_val[i][j] += board.get_capacity(i - 1, j - 1);
+						}
+					}
+				}
+
+				if (in_board(i, j - 1)) {
+					if (board.get_cell_color(i, j - 1) == next_color) {
+						if (board.get_orbs_num(i, j - 1) >= cur_orb_num) {
+							cell_val[i][j] -= cur_orb_num;
+							cell_val[i][j] -= cur_cap;
+						}
+						else {
+							cell_val[i][j] += board.get_orbs_num(i, j - 1);
+							cell_val[i][j] += board.get_capacity(i, j - 1);
+						}
+					}
+				}
+
+				if (in_board(i + 1, j - 1)) {
+					if (board.get_cell_color(i + 1, j - 1) == next_color) {
+						if (board.get_orbs_num(i + 1, j - 1) >= cur_orb_num) {
+							cell_val[i][j] -= cur_orb_num;
+							cell_val[i][j] -= cur_cap;
+						}
+						else {
+							cell_val[i][j] += board.get_orbs_num(i + 1, j - 1);
+							cell_val[i][j] += board.get_capacity(i + 1, j - 1);
+						}
+					}
+				}
+
+				if (in_board(i + 1, j)) {
+					if (board.get_cell_color(i + 1, j) == next_color) {
+						if (board.get_orbs_num(i + 1, j) >= cur_orb_num) {
+							cell_val[i][j] -= cur_orb_num;
+							cell_val[i][j] -= cur_cap;
+						}
+						else {
+							cell_val[i][j] += board.get_orbs_num(i + 1, j);
+							cell_val[i][j] += board.get_capacity(i + 1, j);
+						}
+					}
+				}
+
+				if (in_board(i + 1, j + 1)) {
+					if (board.get_cell_color(i + 1, j + 1) == next_color) {
+						if (board.get_orbs_num(i + 1, j + 1) >= cur_orb_num) {
+							cell_val[i][j] -= cur_orb_num;
+							cell_val[i][j] -= cur_cap;
+						}
+						else {
+							cell_val[i][j] += board.get_orbs_num(i + 1, j + 1);
+							cell_val[i][j] += board.get_capacity(i + 1, j + 1);
+						}
+					}
+				}
+
+				if (in_board(i, j + 1)) {
+					if (board.get_cell_color(i, j + 1) == next_color) {
+						if (board.get_orbs_num(i, j + 1) >= cur_orb_num) {
+							cell_val[i][j] -= cur_orb_num;
+							cell_val[i][j] -= cur_cap;
+						}
+						else {
+							cell_val[i][j] += board.get_orbs_num(i, j + 1);
+							cell_val[i][j] += board.get_capacity(i, j + 1);
+						}
+					}
+				}
+
+				if (in_board(i - 1, j + 1)) {
+					if (board.get_cell_color(i - 1, j + 1) == next_color) {
+						if (board.get_orbs_num(i - 1, j + 1) >= cur_orb_num) {
+							cell_val[i][j] -= cur_orb_num;
+							cell_val[i][j] -= cur_cap;
+						}
+						else {
+							cell_val[i][j] += board.get_orbs_num(i - 1, j + 1);
+							cell_val[i][j] += board.get_capacity(i - 1, j + 1);
+						}
+					}
+				}
+
+
+				//************************critical value***************************
+
+				//�p�G�ܦ��i�z value += 10
+
+				if (board.get_capacity(i, j) - cur_orb_num == 1) cell_val[i][j] += 10;
+
+			}
+
+			//ene��cell
+			if (board.get_cell_color(i, j) == next_color) {
+
+
+				//************************ene bomb negative value***************************
+
+
+
+
+
+
+
+
+
+
+
+				
+			}
+			
+
+			total_val += cell_val[i][j];
+		}
+	}
+
+	return total_val;
+
+}
+
+bool win(Board board, char pre_color, char next_color){
+	bool win = true;
+
+	for (int i = 0; i < ROW; i++) {
+		for (int j = 0; j < COL; j++) {
+			if (board.get_cell_color(i, j) == pre_color || board.get_cell_color(i, j) == 'w') continue;
+			else {
+				win = false;
+				break;
+			}
+		}
+		if (!win) break;
+	}
+	return win;
+}
+
+bool in_board(int i, int j) {
+	if (i > ROW || i < 0 || j > COL || j < 0)
+		return false;
+	else return true;
+}
+
+
+//bool first_turn(Board board) {
+//	for (int i = 0; i < ROW; i++) {
+//		for (int j = 0; j < COL; j++) {
+//			if (board.get_cell_color()) != 'w';
+//		}
+//	}
+//}
