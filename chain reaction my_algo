@@ -4,7 +4,12 @@
 #include "../include/algorithm.h"
 
 #define MAX_VAL 100000
-#define MAX_TREE_HEIGHT 2
+#define MAX_TREE_HEIGHT 3
+
+
+#define CAP_VAL 100
+#define LEFT_VAL 15
+#define SAME_NEARBY_VAL 100
 
 #define CRITICAL_VALUE 500;
 #define ENEMY_CRITICAL_NEAR_VALUE 1000;
@@ -16,12 +21,16 @@ using namespace std;
 // true = max, false = min
 int choose_cell(Board board, int& row, int& col, Player *player, bool m, int step);
 
-int evaluate(Board board, char pre_color, char next_color);
+void virtual_place_orb(Board& board, int r, int c, Player* player,char color, bool m);
+
+int evaluate(Board board, char pre_color, char next_color, bool m);
 
 int Cell_Val(Board board, int i, int j, char pre_color, char next_color, bool ene);
 
 
-int nearby_value(Board board, int i, int j, int p, int q, bool ene);
+int ene_nearby_value(Board board, int i, int j, int p, int q, bool ene);
+int same_nearby_value(Board board, int i, int j, int p, int q, bool ene);
+
 int ratio_of_cell(Board board, int i, int j);
 bool critical(Board board, int i, int j);
 bool in_board(int i, int j);
@@ -67,6 +76,7 @@ bool win(Board board, char pre_color, char next_color);
 
 void algorithm_A(Board board, Player player, int index[]) {
 
+	cout << "t";
 	//////your algorithm design///////////
 
 
@@ -75,13 +85,10 @@ void algorithm_A(Board board, Player player, int index[]) {
 
 	int row, col;
 	char color = player.get_color();
-	
-	char ene_color;
-	if (color == 'r') ene_color = 'b';
-	else ene_color = 'r';
 
 	Player * tmp_player = new Player(player.get_color());
 
+	//得出一個結果出來 並改變row col (ref)
 	choose_cell(board, row, col, tmp_player, true, 0);
 	//cin >> row >> col;
 
@@ -90,6 +97,9 @@ void algorithm_A(Board board, Player player, int index[]) {
 
 
 int choose_cell(Board board, int& row, int& col, Player *player, bool m, int step) {
+
+	//m = true : 我下玩了 對方 evaluate
+	//m = false : 對方下玩了 我 evaluate
 
 	Board tmp_board;
 	char color = player->get_color();
@@ -112,38 +122,35 @@ int choose_cell(Board board, int& row, int& col, Player *player, bool m, int ste
 		}
 	}
 
+	//color = 下棋方的顏色 ; ene_color = evalute 方的顏色
+	
 
 	int total_val[5][6];
 	int fin_val;
-	if(m) fin_val = -MAX_VAL - 1;
+	if (m) fin_val = -MAX_VAL - 1;
 	else fin_val = MAX_VAL + 1;
 	int fin_val_row;
 	int fin_val_col;
 	int tmp_row;
 	int tmp_col;
 
-	/*
-	if (player->get_color() == 'r' && m) {
-		if (first_turn(board)) {
-			row = 2;
-			col = 2;
-			return 0;
-		}
-	}
-	*/
+	
+	//if (player->get_color() == 'r' && m) {
+	//	if (first_turn(board)) {
+	//		row = 2;
+	//		col = 2;
+	//		return 0;
+	//	}
+	//}
+	
 	for (int i = 0; i < ROW; i++) {
 		for (int j = 0; j < COL; j++) {
 
 			tmp_board = board;
-			
+
 			if (board.get_cell_color(i, j) == color || board.get_cell_color(i, j) == 'w') {
 
-				if (m)
-					tmp_board.place_orb(i, j, player);
-				else {
-					Player * ene_player = new Player(color);
-					tmp_board.place_orb(i, j, ene_player);
-				}
+				virtual_place_orb(tmp_board, i, j, player, color, m);
 
 				// 如果下了然後贏了
 				if (win(board, color, ene_color)) {
@@ -151,30 +158,26 @@ int choose_cell(Board board, int& row, int& col, Player *player, bool m, int ste
 				}
 				else {
 					if (step >= MAX_TREE_HEIGHT)
-						if(m)
-							total_val[i][j] = evaluate(tmp_board, color, ene_color);
+						if (m)
+							total_val[i][j] = evaluate(tmp_board, color, ene_color, m);
 						else
-							total_val[i][j] = -evaluate(tmp_board, color, ene_color);
+							total_val[i][j] = -evaluate(tmp_board, color, ene_color, m);
 					else
-							total_val[i][j] = choose_cell(tmp_board, tmp_row, tmp_col, player, !m, step + 1);
+						total_val[i][j] = choose_cell(tmp_board, tmp_row, tmp_col, player, !m, step + 1);
 				}
 
 				if (m) {
 					if (total_val[i][j] > fin_val) {
-
 						fin_val = total_val[i][j];
 						fin_val_row = i;
 						fin_val_col = j;
-
 					}
 				}
 				else {
 					if (total_val[i][j] < fin_val) {
-
 						fin_val = total_val[i][j];
 						fin_val_row = i;
 						fin_val_col = j;
-
 					}
 				}
 			}
@@ -195,54 +198,207 @@ int choose_cell(Board board, int& row, int& col, Player *player, bool m, int ste
 // pre_color代表之前下的是誰 ; now_color代表下個下的是誰
 // evaluate 判斷的是 pre_color 下完後 , next_color 下之前 的 value
 // 可藉此判斷 pre_color 下的這步所造成的   """ 對於對方來說的整盤value """  好不好
-int evaluate(Board board, char pre_color, char next_color) {
+int evaluate(Board board, char pre_color, char next_color, bool m) {
 
 	int cell_val[ROW][COL];
-	int total_val = 0;
-
-
-	
+	int board_total_val = 0;
 
 	for (int i = 0; i < ROW; i++) {
 		for (int j = 0; j < COL; j++) {
 			cell_val[i][j] = 0;
-			
 
-			if (board.get_cell_color(i,j) == 'w') continue;		//如果空白就 = 0
-			
+
+			if (board.get_cell_color(i, j) == 'w') continue;		//如果空白就 = 0
+
 			//自己的cell
-			if (board.get_cell_color(i, j) == pre_color) {
+			if (board.get_cell_color(i, j) == pre_color) 
+				cell_val[i][j] += Cell_Val(board, i, j, pre_color, next_color, (true^m));
 
-				cell_val[i][j] += Cell_Val(board, i, j, pre_color, next_color, false);
 			
-			}
-
 			//ene的cell
 			if (board.get_cell_color(i, j) == next_color) {
-
-				//cell_val[i][j] -= Cell_Val(board, i, j, next_color, pre_color, true);
-				
-	
+				//cell_val[i][j] -= Cell_Val(board, i, j, next_color, pre_color, (false^m));
 			}
-			
 
-			total_val += cell_val[i][j];
+			board_total_val += cell_val[i][j];
 		}
 	}
 
-	return total_val;
+	return board_total_val;
 
 }
 
 
+//只算一方cell(this_color的那一方)
+int Cell_Val(Board board, int i, int j, char this_color, char that_color, bool flag) {
 
-bool win(Board board, char pre_color, char next_color){
+	int cur_orb_num = board.get_orbs_num(i, j);
+	int cur_cap = board.get_capacity(i, j);
+	int cell_value = 1000;
+	//************************basic value***************************
+
+	//爆炸範圍越小越好
+	cell_value += CAP_VAL * (8 - cur_cap);
+
+	//剩餘爆炸數量越少越好
+	cell_value += LEFT_VAL * (8 - (cur_cap - cur_orb_num));
+
+	//************************ neighbor cell ***************************
+
+	//大於 or 小於 隔壁的orb數量 (可疊加)
+	//上 左上 左 左下 下 右下 右 右上
+
+	//如果小於隔壁的 那val就 - 自己的orb_num(因為會被吃掉)
+	//越多比自己大的隔壁cell 就 - 越多(但越多cell 就減的越少)
+
+	//如果必比隔壁多 就 +=對方的orb_num
+
+	if (in_board(i - 1, j)) {
+
+		if (board.get_cell_color(i - 1, j) == that_color) 
+			cell_value += ene_nearby_value(board, i, j, -1, 0, flag);
+		
+		else if (board.get_cell_color(i - 1, j) == this_color) 
+			cell_value += same_nearby_value(board, i, j, -1, 0, flag);
+	}
+
+	if (in_board(i - 1, j - 1)) {
+
+		if (board.get_cell_color(i - 1, j - 1) == that_color) 
+			cell_value += ene_nearby_value(board, i, j, -1, -1, flag);
+		
+		else if (board.get_cell_color(i - 1, j - 1) == this_color) 
+			cell_value += same_nearby_value(board, i, j, -1, -1, flag);
+	}
+
+	if (in_board(i, j - 1)) {
+
+		if (board.get_cell_color(i, j - 1) == that_color) 
+			cell_value += ene_nearby_value(board, i, j, 0, -1, flag);
+		
+		else if (board.get_cell_color(i, j - 1) == this_color) 
+			cell_value += same_nearby_value(board, i, j, 0, -1, flag);
+	}
+
+	if (in_board(i + 1, j - 1)) {
+
+		if (board.get_cell_color(i + 1, j - 1) == that_color) 
+			cell_value += ene_nearby_value(board, i, j, 1, -1, flag);
+		
+		else if (board.get_cell_color(i + 1, j - 1) == this_color) 
+			cell_value += same_nearby_value(board, i, j, 1, -1, flag);
+	}
+
+	if (in_board(i + 1, j)) {
+
+		if (board.get_cell_color(i + 1, j) == that_color) 
+			cell_value += ene_nearby_value(board, i, j, 1, 0, flag);
+		
+		else if (board.get_cell_color(i + 1, j) == this_color) 
+			cell_value += same_nearby_value(board, i, j, 1, 0, flag);
+	}
+
+	if (in_board(i + 1, j + 1)) {
+
+		if (board.get_cell_color(i + 1, j + 1) == that_color) 
+			cell_value += ene_nearby_value(board, i, j, 1, 1, flag);
+		
+		else if (board.get_cell_color(i + 1, j + 1) == this_color) 
+			cell_value += same_nearby_value(board, i, j, 1, 1, flag);
+	}
+
+	if (in_board(i, j + 1)) {
+
+		if (board.get_cell_color(i, j + 1) == that_color) 
+			cell_value += ene_nearby_value(board, i, j, 0, 1, flag);
+		
+		else if (board.get_cell_color(i, j + 1) == this_color) 
+			cell_value += same_nearby_value(board, i, j, 0, 1, flag);
+	}
+
+	if (in_board(i - 1, j + 1)) {
+
+		if (board.get_cell_color(i - 1, j + 1) == that_color) 
+			cell_value += ene_nearby_value(board, i, j, -1, 1, flag);
+		
+		else if (board.get_cell_color(i - 1, j + 1) == this_color) 
+			cell_value += same_nearby_value(board, i, j, -1, 1, flag);
+	}
+
+
+	//************************critical value***************************
+
+	//可爆最好
+	if (critical(board, i, j)) cell_value += CRITICAL_VALUE;
+
+	return cell_value;
+
+}
+
+int ene_nearby_value(Board board, int i, int j, int p, int q, bool flag) {
+	int nv = 0;
+
+	if (flag) {
+		if (ratio_of_cell(board, i + p, j + q) > ratio_of_cell(board, i, j)) {
+			nv -= 800;
+			//nv -= 100 * board.get_orbs_num(i, j);
+			//nv -= 100 * board.get_capacity(i, j);
+			if (critical(board, i + p, j + q) && critical(board, i, j))
+				nv -= ENEMY_CRITICAL_NEAR_VALUE;
+		}
+		else {
+			nv += 800;
+			//nv += 100 * board.get_orbs_num(i + p, j + q);
+			//nv += 100 * board.get_capacity(i + p, j + q);
+		}
+	}
+	else {
+		if (ratio_of_cell(board, i + p, j + q) >= ratio_of_cell(board, i, j)) {
+			nv -= 800;
+			//nv -= 100 * board.get_orbs_num(i, j);
+			//nv -= 100 * board.get_capacity(i, j);
+			if (critical(board, i + p, j + q) && critical(board, i, j))
+				nv -= ENEMY_CRITICAL_NEAR_VALUE;
+		}
+		else {
+			nv += 800;
+			//nv += 100 * board.get_orbs_num(i + p, j + q);
+			//nv += 100 * board.get_capacity(i + p, j + q);
+		}
+
+	}
+	return nv;
+}
+
+int same_nearby_value(Board board, int i, int j, int p, int q, bool ene) {
+	
+	int nv = 0;
+	
+	nv -= SAME_NEARBY_VAL;
+
+	return nv;
+}
+
+
+
+
+void virtual_place_orb(Board& board, int i, int j, Player* player, char color, bool m) {
+	if (m)
+		board.place_orb(i, j, player);
+	else {
+		Player * ene_player = new Player(color);
+		board.place_orb(i, j, ene_player);
+	}
+}
+
+
+bool win(Board board, char pre_color, char next_color) {
 	bool win = true;
 
 	for (int i = 0; i < ROW; i++) {
 		for (int j = 0; j < COL; j++) {
 			if (board.get_cell_color(i, j) == pre_color || board.get_cell_color(i, j) == 'w') continue;
-			else 
+			else
 				return false;
 		}
 	}
@@ -255,153 +411,20 @@ bool in_board(int i, int j) {
 	else return true;
 }
 
-
-int Cell_Val(Board board, int i, int j, char this_color, char that_color, bool ene) {
-	
-	int cur_orb_num = board.get_orbs_num(i, j);
-	int cur_cap = board.get_capacity(i, j);
-	int cell_value = 1000;
-	//************************basic value***************************
-
-				//爆炸範圍
-	cell_value += 15*(8-cur_cap);
-	cell_value += (cur_orb_num);
-
-	//************************bomb value***************************
-
-	//大於 or 小於 隔壁的orb數量 (可疊加)
-	//上 左上 左 左下 下 右下 右 右上
-
-	//如果小於隔壁的 那val就 - 自己的orb_num(因為會被吃掉)
-	//越多比自己大的隔壁cell 就 - 越多(但越多cell 就減的越少)
-
-	//如果必隔壁多 就 +=對方的orb_num
-
-	if (in_board(i - 1, j)) {
-		if (board.get_cell_color(i - 1, j) == that_color) {
-			cell_value += nearby_value(board, i, j, -1, 0, ene);
-		}
-		else if (board.get_cell_color(i - 1, j) == this_color) {
-			cell_value -= 10;
-		}
-	}
-
-	if (in_board(i - 1, j - 1)) {
-		if (board.get_cell_color(i - 1, j - 1) == that_color) {
-			cell_value += nearby_value(board, i, j, -1, -1, ene);
-		}
-		else if (board.get_cell_color(i - 1, j - 1) == this_color) {
-			cell_value -= 10;
-		}
-	}
-
-	if (in_board(i, j - 1)) {
-		if (board.get_cell_color(i, j - 1) == that_color) {
-			cell_value += nearby_value(board, i, j, 0, -1, ene);
-		}
-		else if (board.get_cell_color(i, j - 1) == this_color) {
-			cell_value -= 10;
-		}
-	}
-
-	if (in_board(i + 1, j - 1)) {
-		if (board.get_cell_color(i + 1, j - 1) == that_color) {
-			cell_value += nearby_value(board, i, j, 1, -1, ene);
-		}
-		else if (board.get_cell_color(i + 1, j - 1) == this_color) {
-			cell_value -= 10;
-		}
-	}
-
-	if (in_board(i + 1, j)) {
-		if (board.get_cell_color(i + 1, j) == that_color) {
-			cell_value += nearby_value(board, i, j, 1, 0, ene);
-		}
-		else if (board.get_cell_color(i + 1, j) == this_color) {
-			cell_value -= 10;
-		}
-	}
-
-	if (in_board(i + 1, j + 1)) {
-		if (board.get_cell_color(i + 1, j + 1) == that_color) {
-			cell_value += nearby_value(board, i, j, 1, 1, ene);
-		}
-		else if (board.get_cell_color(i + 1, j + 1) == this_color) {
-			cell_value -= 10;
-		}
-	}
-
-	if (in_board(i, j + 1)) {
-		if (board.get_cell_color(i, j + 1) == that_color) {
-			cell_value += nearby_value(board, i, j, 0, 1, ene);
-		}
-		else if (board.get_cell_color(i, j + 1) == this_color) {
-			cell_value -= 10;
-		}
-	}
-
-	if (in_board(i - 1, j + 1)) {
-		if (board.get_cell_color(i - 1, j + 1) == that_color) {
-			cell_value += nearby_value(board, i, j, -1, 1, ene);
-		}
-		else if (board.get_cell_color(i - 1, j + 1) == this_color) {
-			cell_value -= 10;
-		}
-	}
-
-
-	//************************critical value***************************
-
-	//如果變成可爆 value += 10
-
-	if (critical(board, i, j)) cell_value += CRITICAL_VALUE;
-
-	return cell_value;
-
-}
-
-int nearby_value(Board board, int i, int j, int p, int q, bool ene) {
-	int nv = 0;
-	if (ene) {
-		if (ratio_of_cell(board, i + p, j + q) > ratio_of_cell(board, i, j)) {
-			nv -= 100 * board.get_orbs_num(i, j);
-			nv -= 100 * board.get_capacity(i, j);
-			if (critical(board, i + p, j + q) && critical(board, i, j))
-				nv += ENEMY_CRITICAL_NEAR_VALUE;
-		}
-		else {
-			nv += 100 * board.get_orbs_num(i + p, j + q);
-			nv += 100 * board.get_capacity(i + p, j + q);
-		}
-	}
-	else {
-		if (ratio_of_cell(board, i + p, j + q) >= ratio_of_cell(board, i, j)) {
-			nv -= 100 * board.get_orbs_num(i, j);
-			nv -= 100 * board.get_capacity(i, j);
-			if (critical(board, i + p, j + q) && critical(board, i, j))
-				nv -= ENEMY_CRITICAL_NEAR_VALUE;
-		}
-		else {
-			nv += 100 * board.get_orbs_num(i + p, j + q);
-			nv += 100 * board.get_capacity(i + p, j + q);
-		}
-	}
-	return nv;
-}
-
 int ratio_of_cell(Board b, int i, int j) {
-	return -(b.get_capacity(i, j) - b.get_orbs_num(i, j))  ;
+	return -(b.get_capacity(i, j) - b.get_orbs_num(i, j));
 }
 
 bool critical(Board board, int i, int j) {
-	return board.get_capacity(i, j) - board.get_orbs_num(i, j) == 1;
+	return (board.get_capacity(i, j) - board.get_orbs_num(i, j)) == 1;
 }
 
 bool first_turn(Board board) {
 	for (int i = 0; i < ROW; i++) {
 		for (int j = 0; j < COL; j++) {
-			if (board.get_cell_color(i,j) != 'w') return false;
+			if (board.get_cell_color(i, j) != 'w') return false;
 		}
 	}
 	return true;
 }
+
