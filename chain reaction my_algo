@@ -13,6 +13,9 @@
 
 #define CRITICAL_VALUE 500;
 #define ENEMY_CRITICAL_NEAR_VALUE 1000;
+#define ENEMY_CRITICAL_NEAR_VALUE_CAP3_BONUS 100;
+#define NEARBY_ENE_MORE_VALUE 800;
+#define NEARBY_SELF_MORE_VALUE 800;
 
 bool first_turn(Board board);
 
@@ -46,13 +49,6 @@ bool win(Board board, char pre_color, char next_color);
 
 
 
-
-
-
-
-
-
-
 /******************************************************
  * In your algorithm, you can just use the the funcitons
  * listed by TA to get the board information.(functions
@@ -75,8 +71,8 @@ bool win(Board board, char pre_color, char next_color);
 
 
 void algorithm_A(Board board, Player player, int index[]) {
+	cout << "my algo" << endl;
 
-	cout << "t";
 	//////your algorithm design///////////
 
 
@@ -91,6 +87,8 @@ void algorithm_A(Board board, Player player, int index[]) {
 	//得出一個結果出來 並改變row col (ref)
 	choose_cell(board, row, col, tmp_player, true, 0);
 	//cin >> row >> col;
+
+	delete tmp_player;
 
 	index[0] = row, index[1] = col;
 }
@@ -234,8 +232,11 @@ int Cell_Val(Board board, int i, int j, char this_color, char that_color, bool f
 
 	int cur_orb_num = board.get_orbs_num(i, j);
 	int cur_cap = board.get_capacity(i, j);
-	int cell_value = 1000;
+
 	//************************basic value***************************
+
+	//越多格越好
+	int cell_value = 3000;
 
 	//爆炸範圍越小越好
 	cell_value += CAP_VAL * (8 - cur_cap);
@@ -336,32 +337,39 @@ int Cell_Val(Board board, int i, int j, char this_color, char that_color, bool f
 }
 
 int ene_nearby_value(Board board, int i, int j, int p, int q, bool flag) {
+
+
+	// flag 代表這顆棋子critical & 隔壁棋子critical 誰比較有優勢
+	// falg == true 代表 隔壁critical 對自己有利(自己先攻)
+
 	int nv = 0;
 
 	if (flag) {
 		if (ratio_of_cell(board, i + p, j + q) > ratio_of_cell(board, i, j)) {
-			nv -= 800;
-			//nv -= 100 * board.get_orbs_num(i, j);
-			//nv -= 100 * board.get_capacity(i, j);
-			if (critical(board, i + p, j + q) && critical(board, i, j))
-				nv -= ENEMY_CRITICAL_NEAR_VALUE;
+			nv -= NEARBY_ENE_MORE_VALUE;
 		}
 		else {
-			nv += 800;
-			//nv += 100 * board.get_orbs_num(i + p, j + q);
-			//nv += 100 * board.get_capacity(i + p, j + q);
+			nv += NEARBY_SELF_MORE_VALUE;
+			if (critical(board, i + p, j + q) && critical(board, i, j)) {
+				nv += ENEMY_CRITICAL_NEAR_VALUE;
+				if (board.get_capacity(i, j) == 3)
+					nv += ENEMY_CRITICAL_NEAR_VALUE_CAP3_BONUS;
+			}
 		}
 	}
 	else {
 		if (ratio_of_cell(board, i + p, j + q) >= ratio_of_cell(board, i, j)) {
-			nv -= 800;
+			nv -= NEARBY_ENE_MORE_VALUE;
 			//nv -= 100 * board.get_orbs_num(i, j);
 			//nv -= 100 * board.get_capacity(i, j);
-			if (critical(board, i + p, j + q) && critical(board, i, j))
+			if (critical(board, i + p, j + q) && critical(board, i, j)) {
 				nv -= ENEMY_CRITICAL_NEAR_VALUE;
+				if (board.get_capacity(i, j) == 3)
+					nv -= ENEMY_CRITICAL_NEAR_VALUE_CAP3_BONUS;
+			}
 		}
 		else {
-			nv += 800;
+			nv += NEARBY_SELF_MORE_VALUE;
 			//nv += 100 * board.get_orbs_num(i + p, j + q);
 			//nv += 100 * board.get_capacity(i + p, j + q);
 		}
@@ -388,6 +396,7 @@ void virtual_place_orb(Board& board, int i, int j, Player* player, char color, b
 	else {
 		Player * ene_player = new Player(color);
 		board.place_orb(i, j, ene_player);
+		delete ene_player;
 	}
 }
 
