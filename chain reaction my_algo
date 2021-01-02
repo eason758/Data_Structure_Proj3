@@ -3,7 +3,7 @@
 #include <time.h>
 #include "../include/algorithm.h"
 
-#define MAX_VAL 100000
+#define MAX_VAL 1000000
 #define MAX_TREE_HEIGHT 3
 
 
@@ -17,7 +17,6 @@
 #define NEARBY_ENE_MORE_VALUE 800;
 #define NEARBY_SELF_MORE_VALUE 800;
 
-bool first_turn(Board board);
 
 using namespace std;
 
@@ -41,39 +40,10 @@ bool win(Board board, char pre_color, char next_color);
 
 
 
-//為什麼第一步會下在0,0?
-//因為在evaluate 0,0 的時候 發現贏了(第一步只有自己)
 
-//為什麼會一直下廣呢?
-//因為evaluation中 多一個cell = 多一個 value來源
-
-
-
-/******************************************************
- * In your algorithm, you can just use the the funcitons
- * listed by TA to get the board information.(functions
- * 1. ~ 4. are listed in next block)
- *
- * The STL library functions is not allowed to use.
-******************************************************/
-
-/*************************************************************************
- * 1. int board.get_orbs_num(int row_index, int col_index)
- * 2. int board.get_capacity(int row_index, int col_index)
- * 3. char board.get_cell_color(int row_index, int col_index)
- * 4. void board.print_current_board(int row_index, int col_index, int round)
- *
- * 1. The function that return the number of orbs in cell(row, col)
- * 2. The function that return the orb capacity of the cell(row, col)
- * 3. The function that return the color fo the cell(row, col)
- * 4. The function that print out the current board statement
-*************************************************************************/
 
 
 void algorithm_A(Board board, Player player, int index[]) {
-	cout << "my algo" << endl;
-
-	//////your algorithm design///////////
 
 
 	// 主要是回傳(但不會回傳 是改值)  :  index[0] = row , index[1] = col 寫下自己的最終決定
@@ -82,14 +52,9 @@ void algorithm_A(Board board, Player player, int index[]) {
 	int row, col;
 	char color = player.get_color();
 
-	Player * tmp_player = new Player(player.get_color());
-
 	//得出一個結果出來 並改變row col (ref)
-	choose_cell(board, row, col, tmp_player, true, 0);
-	//cin >> row >> col;
-
-	delete tmp_player;
-
+	choose_cell(board, row, col, &player, true, 0);
+	
 	index[0] = row, index[1] = col;
 }
 
@@ -133,13 +98,7 @@ int choose_cell(Board board, int& row, int& col, Player *player, bool m, int ste
 	int tmp_col;
 
 	
-	//if (player->get_color() == 'r' && m) {
-	//	if (first_turn(board)) {
-	//		row = 2;
-	//		col = 2;
-	//		return 0;
-	//	}
-	//}
+
 	
 	for (int i = 0; i < ROW; i++) {
 		for (int j = 0; j < COL; j++) {
@@ -243,7 +202,7 @@ int Cell_Val(Board board, int i, int j, char this_color, char that_color, bool f
 
 	//剩餘爆炸數量越少越好
 	cell_value += LEFT_VAL * (8 - (cur_cap - cur_orb_num));
-
+	
 	//************************ neighbor cell ***************************
 
 	//大於 or 小於 隔壁的orb數量 (可疊加)
@@ -426,14 +385,5 @@ int ratio_of_cell(Board b, int i, int j) {
 
 bool critical(Board board, int i, int j) {
 	return (board.get_capacity(i, j) - board.get_orbs_num(i, j)) == 1;
-}
-
-bool first_turn(Board board) {
-	for (int i = 0; i < ROW; i++) {
-		for (int j = 0; j < COL; j++) {
-			if (board.get_cell_color(i, j) != 'w') return false;
-		}
-	}
-	return true;
 }
 
