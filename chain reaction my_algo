@@ -8,8 +8,8 @@
 
 #define BASIC_VALUE 300
 
-#define CAP_VAL 10
-#define LEFT_VAL 30
+#define CAP_VAL 30
+#define LEFT_VAL 15
 #define SAME_NEARBY_VAL 5
 
 #define CRITICAL_VALUE 5
@@ -107,8 +107,7 @@ int choose_cell(Board b, int& r, int& c, Player *p, bool m, int step) {
 
 				virtual_place_orb(tmp_board, i, j, p, color, m);
 
-				if (!m) {
-				}// 如果下了然後贏了
+				// 如果下了然後贏了
 				if (win(tmp_board, color, ene_color)) {
 					if(m)
 						total_val[i][j] = MAX_VAL;
@@ -196,10 +195,8 @@ int Cell_Val(Board board, int i, int j, char this_color, char that_color, bool f
 
 	//越多格越好
 	int cell_value = BASIC_VALUE;
-
 	//爆炸範圍越小越好
 	cell_value += CAP_VAL * (8 - cur_cap);
-
 	//剩餘爆炸數量越少越好
 	cell_value += LEFT_VAL * (8 - (cur_cap - cur_orb_num));
 	
