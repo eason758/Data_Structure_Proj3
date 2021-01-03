@@ -4,7 +4,7 @@
 #include "../include/algorithm.h"
 using namespace std;
 #define MAX_VAL 1000000
-#define MAX_TREE_HEIGHT 1
+#define MAX_TREE_HEIGHT 3
 
 #define BASIC_VALUE 300
 
