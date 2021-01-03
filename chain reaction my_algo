@@ -10,13 +10,13 @@ using namespace std;
 
 #define CAP_VAL 10
 #define LEFT_VAL 10
-#define SAME_NEARBY_VAL 30
+#define SAME_NEARBY_VAL 10
 
 #define CRITICAL_VALUE 50
 #define ENEMY_CRITICAL_NEAR_VALUE 90
 #define ENEMY_CRITICAL_NEAR_VALUE_CAP3_BONUS 10
-#define NEARBY_ENE_MORE_VALUE 80
-#define NEARBY_SELF_MORE_VALUE 70
+#define NEARBY_ENE_MORE_VALUE 10
+#define NEARBY_SELF_MORE_VALUE 100
 
 int r = 0;
 int max_tree_height = 0;
@@ -46,9 +46,10 @@ bool win(Board board, char pre_color, char next_color);
 
 
 void algorithm_A(Board board, Player player, int index[]) {
-	r++;
-	max_tree_height = (r/10);
-	if (max_tree_height > MAX_TREE_HEIGHT) max_tree_height = MAX_TREE_HEIGHT;
+	//r++;
+	//max_tree_height = (r/10);
+	//if (max_tree_height > MAX_TREE_HEIGHT) 
+		max_tree_height = MAX_TREE_HEIGHT;
 	int row, col;
 	char color = player.get_color();
 
@@ -182,7 +183,7 @@ int evaluate(Board board, char pre_color, char next_color, bool m) {
 
 			//ene的cell
 			if (board.get_cell_color(i, j) == next_color) {
-				//cell_val[i][j] -= Cell_Val(board, i, j, next_color, pre_color, (false));
+				cell_val[i][j] -= Cell_Val(board, i, j, next_color, pre_color, (false));
 			}
 
 			board_total_val += cell_val[i][j];
