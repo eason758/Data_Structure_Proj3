@@ -4,7 +4,7 @@
 #include "../include/algorithm.h"
 using namespace std;
 #define MAX_VAL 1000000
-#define MAX_TREE_HEIGHT 3
+#define MAX_TREE_HEIGHT 1
 
 #define BASIC_VALUE 300
 
@@ -42,9 +42,6 @@ int ratio_of_cell(Board board, int i, int j);
 bool critical(Board board, int i, int j);
 bool in_board(int i, int j);
 bool win(Board board, char pre_color, char next_color);
-
-
-
 
 
 void algorithm_A(Board board, Player player, int index[]) {
@@ -100,8 +97,6 @@ int choose_cell(Board b, int& r, int& c, Player *p, bool m, int step) {
 	int tmp_col;
 
 
-
-
 	for (int i = 0; i < ROW; i++) {
 		for (int j = 0; j < COL; j++) {
 
@@ -118,15 +113,15 @@ int choose_cell(Board b, int& r, int& c, Player *p, bool m, int step) {
 					else
 						total_val[i][j] = -MAX_VAL;
 				}
-				else {
-					if (step >= max_tree_height)
-						if (m)
-							total_val[i][j] = evaluate(tmp_board, color, ene_color, m);
-						else
-							total_val[i][j] = 0 - evaluate(tmp_board, color, ene_color, m);
+			else{
+				if (step >= max_tree_height)
+					if (m)
+						total_val[i][j] = evaluate(tmp_board, color, ene_color, m);
 					else
-						total_val[i][j] = choose_cell(tmp_board, tmp_row, tmp_col, p, !m, step + 1);
-				}
+						total_val[i][j] = 0 - evaluate(tmp_board, color, ene_color, m);
+				else
+					total_val[i][j] = choose_cell(tmp_board, tmp_row, tmp_col, p, !m, step + 1);
+			}
 
 				if (m) {
 					if (total_val[i][j] > fin_val) {
@@ -142,13 +137,6 @@ int choose_cell(Board b, int& r, int& c, Player *p, bool m, int step) {
 						fin_val_col = j;
 					}
 				}
-
-				//if (step == 3) {
-				//	tmp_board.print_current_board(0, 0, 0);
-				//	//cout << "totol value: " << total_val[i][j] << " fin_val: " << fin_val << endl;
-				//}
-
-
 			}
 			else continue;
 
@@ -169,34 +157,31 @@ int evaluate(Board board, char pre_color, char next_color, bool m) {
 
 	int cell_val[ROW][COL];
 	int board_total_val = 0;
-
+	bool win = true;
 	for (int i = 0; i < ROW; i++) {
 		for (int j = 0; j < COL; j++) {
 			cell_val[i][j] = 0;
 
-
 			if (board.get_cell_color(i, j) == 'w') continue;		//如果空白就 = 0
 
 			//自己的cell
-			if (board.get_cell_color(i, j) == pre_color)
+			if (board.get_cell_color(i, j) == pre_color) {
+				//if (win &&  i == ROW - 1 && j == COL - 1) return MAX_VAL;
 				cell_val[i][j] += Cell_Val(board, i, j, pre_color, next_color, (false));
-
-
+			}
 			//ene的cell
 			if (board.get_cell_color(i, j) == next_color) {
+				win = false;
 				cell_val[i][j] -= Cell_Val(board, i, j, next_color, pre_color, (false));
 			}
-
 			board_total_val += cell_val[i][j];
 		}
 	}
-
 	return board_total_val;
-
 }
 
 
-//只算一方cell(this_color的那一方)
+
 int Cell_Val(Board board, int i, int j, char this_color, char that_color, bool flag) {
 
 	int cur_orb_num = board.get_orbs_num(i, j);
@@ -319,25 +304,6 @@ int ene_nearby_value(Board board, int i, int j, int p, int q, bool flag) {
 	//cout << "at: "<<"( "<<i<<" , "<<j<<" )" << endl;
 	//cout << "with: " << "( " << i+p << " , " << j+q << " )" << endl;
 	
-	flag = false;
-
-	if (flag) {
-		//cout << "flag" << endl;
-		if (board.get_orbs_num(i + p, j + q) - board.get_capacity(i + p, j + q)
-			> board.get_orbs_num(i, j) - board.get_capacity(i, j)) {
-			nv -= NEARBY_ENE_MORE_VALUE;
-		}
-		else {
-			nv += NEARBY_SELF_MORE_VALUE;
-			if (critical(board, i + p, j + q) && critical(board, i, j)) {
-				nv += ENEMY_CRITICAL_NEAR_VALUE;
-				if (board.get_capacity(i, j) == 3)
-					nv += ENEMY_CRITICAL_NEAR_VALUE_CAP3_BONUS;
-			}
-		}
-		//cout << "nv : "<< nv << endl;
-	}
-	else {
 		if (board.get_orbs_num(i+p, j+q) - board.get_capacity(i+p, j+q)
 			>= board.get_orbs_num(i, j) - board.get_capacity(i, j)) {
 			nv -= NEARBY_ENE_MORE_VALUE;
@@ -351,21 +317,15 @@ int ene_nearby_value(Board board, int i, int j, int p, int q, bool flag) {
 			nv += NEARBY_SELF_MORE_VALUE;
 		}
 		//cout << "nv : " << nv << endl;
-	}
+	
 	return nv;
 }
 
 int same_nearby_value(Board board, int i, int j, int p, int q, bool ene) {
-	//cout << "at: " << "( " << i << " , " << j << " )" << endl;
-	//cout << "with: " << "( " << i + p << " , " << j + q << " )" << endl;
 	int nv = 0;
-	//cout << "same near by" << endl;
 	nv -= SAME_NEARBY_VAL;
-
 	return nv;
 }
-
-
 
 
 void virtual_place_orb(Board& board, int i, int j, Player* player, char color, bool m) {
@@ -378,11 +338,7 @@ void virtual_place_orb(Board& board, int i, int j, Player* player, char color, b
 	}
 }
 
-
 bool win(Board board, char pre_color, char next_color) {
-
-	//cout << "test" << endl;
-	//board.print_current_board(1, 1, 1);
 
 	for (int i = 0; i < ROW; i++) {
 		for (int j = 0; j < COL; j++) {
