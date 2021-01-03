@@ -10,13 +10,15 @@ using namespace std;
 
 #define CAP_VAL 10
 #define LEFT_VAL 10
+#define CAP3_BONUS 25
 #define SAME_NEARBY_VAL 10
 
-#define CRITICAL_VALUE 50
 #define ENEMY_CRITICAL_NEAR_VALUE 90
 #define ENEMY_CRITICAL_NEAR_VALUE_CAP3_BONUS 10
-#define NEARBY_ENE_MORE_VALUE 10
+#define NEARBY_ENE_MORE_VALUE 30
 #define NEARBY_SELF_MORE_VALUE 100
+
+#define CRITICAL_VALUE 50
 
 int r = 0;
 int max_tree_height = 0;
@@ -52,7 +54,6 @@ void algorithm_A(Board board, Player player, int index[]) {
 		max_tree_height = MAX_TREE_HEIGHT;
 	int row, col;
 	char color = player.get_color();
-
 	//得出一個結果出來 並改變r c (ref)
 	choose_cell(board, row, col, &player, true, 0);
 
@@ -207,6 +208,7 @@ int Cell_Val(Board board, int i, int j, char this_color, char that_color, bool f
 	int cell_value = BASIC_VALUE;
 	//爆炸範圍越小越好
 	cell_value += CAP_VAL * (8 - cur_cap);
+	if (cur_cap == 3) cell_value += CAP3_BONUS;
 	//剩餘爆炸數量越少越好
 	cell_value += LEFT_VAL * (8 - (cur_cap - cur_orb_num));
 
